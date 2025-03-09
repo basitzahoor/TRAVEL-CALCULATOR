@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quotation | Traveligo</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='assets/css/quotation.css') }}">
+</head>
+<body>
+    <div class="quotation-container">
+        <h2>Quotation Details</h2>
+
+        <p><strong>Total Persons:</strong> {{ persons }}</p>
+        <p><strong>Men:</strong> {{ men }}, Women: {{ women }}, Children: {{ children }}</p>
+        <p><strong>Rooms Required:</strong> {{ rooms }}</p>
+        <p><strong>Extra Beds:</strong> {{ extra_beds }}</p>
+        <p><strong>Children Without Bed (CWB):</strong> {{ cwb }}</p>
+
+        <h3>Hotel Costs:</h3>
+        <ul>
+            {% for hotel in hotels %}
+                <p><strong>Hotel Name:</strong> {{ hotel.name }}</p>
+                <p><strong>Location:</strong> {{ hotel.location }}</p>
+                <p><strong>Price:</strong> ₹{{ hotel.price }}</p>
+            {% endfor %}
+        </ul>
+
+        <p><strong>Extra Bed Charges:</strong> ₹{{ extra_beds * extra_bed_price }}</p>
+        <p><strong>CWB Charges:</strong> ₹{{ cwb * cwb_price }}</p>
+       <!---- <p><strong>Commission (₹2000 per person):</strong> ₹{{ commission }}</p> -->
+
+        <h3>Total Package Price: ₹{{ total_price }}</h3>
+
+        <a href="{{ url_for('dashboard') }}" class="btn-back">Back to Dashboard</a>
+    </div>
+</body>
+</html>

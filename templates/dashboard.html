@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard | Traveligo</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='assets/css/dashboard.css') }}">
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+</head>
+<body>
+    <div class="dashboard-container">
+        <h2>Package Selection</h2>
+        <form id="quotationForm" action="{{ url_for('quotation') }}" method="POST">
+            <div class="input-group">
+                <label for="men">Number of Men:</label>
+                <input type="number" id="men" name="men" value="0" min="0">
+            </div>
+
+            <div class="input-group">
+                <label for="women">Number of Women:</label>
+                <input type="number" id="women" name="women" value="0" min="0">
+            </div>
+
+            <div class="input-group">
+                <label for="children">Number of Children:</label>
+                <input type="number" id="children" name="children" value="0" min="0">
+            </div>
+
+            <div class="input-group">
+                <label for="persons">Total Persons:</label>
+                <input type="number" id="persons" name="persons" value="1" readonly>
+            </div>
+
+            <div class="input-group">
+                <label for="extra_beds">Number of Extra Beds:</label>
+                <input type="number" id="extra_beds" name="extra_beds" value="0" min="0">
+            </div>
+
+            <div class="input-group">
+                <label for="cwb">Number of Children Without Bed (CWB):</label>
+                <input type="number" id="cwb" name="cwb" value="0" min="0">
+            </div>
+
+            <div class="input-group">
+                <label for="season">Select Season:</label>
+                <select name="season" id="season">
+                    {% for season in seasons %}
+                        <option value="{{ season }}">{{ season }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <h3>Choose Location</h3>
+            <div id="locations-container">
+                {% for location in locations %}
+                    <div class="location-item">
+                        <input type="checkbox" class="location-checkbox" data-location="{{ location }}">
+                        <label>{{ location }}</label>
+                        <div class="hotel-dropdown"></div>
+                    </div>
+                {% endfor %}
+            </div>
+
+            <!-- Selected Package Display -->
+            <div id="selected-package">
+                <h3>Selected Package</h3>
+                <ul id="selected-hotels"></ul>
+            </div>
+
+            <button type="submit">Get Quotation</button>
+        </form>
+    </div>
+
+    <script>
+        $(document).ready(function () {
+            let selectedHotels = [];
+
+            // Update total persons
+            $("#men, #women, #children").on("input", function () {
+                const men = parseInt($("#men").val()) || 0;
+                const women = parseInt($("#women").val()) || 0;
+                const children = parseInt($("#children").val()) || 0;
+                $("#persons").val(men + women + children);
+            });
+
+            // Load hotels for selected location and season
+            $(".location-checkbox").on("change", function () {
+                const location = $(this).data("location");
+                const season = $("#season").val();
+                const hotelDropdown = $(this).siblings(".hotel-dropdown");
+
+                if ($(this).is(":checked")) {
+                    $.ajax({
+                        url: "/get_hotels",
+                        method: "POST",
+                        contentType: "application/json",
+                        data: JSON.stringify({ location: location, season: season }),
+                        success: function (response) {
+                            // Populate the dropdown with hotels
+                            let options = '<select class="hotel-select">';
+                            options += '<option value="" disabled selected>Select a hotel</option>';
+                            response.forEach(hotel => {
+                                options += `<option value="${hotel.name}" data-price="${hotel.price}" data-extra-bed-price="${hotel.extra_bed_price}" data-cwb-price="${hotel.cwb_price}">${hotel.name} (₹${hotel.price})</option>`;
+                            });
+                            options += '</select>';
+                            hotelDropdown.html(options);
+                            hotelDropdown.show();
+
+                            // Handle hotel selection
+                            hotelDropdown.find(".hotel-select").on("change", function () {
+                                const selectedHotel = {
+                                    name: $(this).val(),
+                                    price: $(this).find(":selected").data("price"),
+                                    extra_bed_price: $(this).find(":selected").data("extra-bed-price"),
+                                    cwb_price: $(this).find(":selected").data("cwb-price"),
+                                    location: location,
+                                };
+
+                                // Remove any existing hotel for this location
+                                selectedHotels = selectedHotels.filter(hotel => hotel.location !== location);
+                                selectedHotels.push(selectedHotel);
+                                updateSelectedPackage();
+                            });
+                        },
+                    });
+                } else {
+                    hotelDropdown.hide();
+                    // Remove hotels from the selected list if the location is unchecked
+                    selectedHotels = selectedHotels.filter(hotel => hotel.location !== location);
+                    updateSelectedPackage();
+                }
+            });
+
+            // Update hotels when season changes
+            $("#season").on("change", function () {
+                $(".location-checkbox:checked").trigger("change");
+            });
+
+            // Update the selected package display
+            function updateSelectedPackage() {
+                const selectedHotelsList = $("#selected-hotels");
+                selectedHotelsList.empty();
+                selectedHotels.forEach(hotel => {
+                    selectedHotelsList.append(`<li>${hotel.name} (${hotel.location}) - ₹${hotel.price}</li>`);
+                });
+            }
+
+            // Submit form with selected hotels data
+            $("#quotationForm").on("submit", function (event) {
+                event.preventDefault();
+                const formData = $(this).serializeArray();
+                selectedHotels.forEach(hotel => {
+                    formData.push({ name: "hotels", value: JSON.stringify(hotel) });
+                });
+
+                // Submit the form data to the server
+                $.ajax({
+                    url: "/quotation",
+                    method: "POST",
+                    data: formData,
+                    success: function (response) {
+                        if (response.redirect) {
+                            window.location.href = response.redirect; // Redirect to quotation.html
+                        }
+                    },
+                    error: function (xhr, status, error) {
+                        console.error("Error:", error);
+                    }
+                });
+            });
+        });
+    </script>
+</body>
+</html>
