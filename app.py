@@ -147,3 +147,31 @@ def quotation_page():
 
 if __name__ == "__main__":
     app.run(debug=True)
+else:
+    # This is required for Vercel deployment
+    import sys
+    from flask import Flask, request
+
+    def vercel_handler(event, context):
+        from flask import Response
+
+        # Convert Vercel event to Flask request
+        environ = {
+            'REQUEST_METHOD': event['httpMethod'],
+            'PATH_INFO': event['path'],
+            'QUERY_STRING': event.get('queryStringParameters', {}),
+            'wsgi.input': BytesIO(event.get('body', '').encode('utf-8')),
+            'CONTENT_TYPE': event.get('headers', {}).get('Content-Type', ''),
+        }
+
+        with app.request_context(environ):
+            try:
+                response = app.full_dispatch_request()
+            except Exception as e:
+                response = app.make_response(app.handle_exception(e))
+
+        return {
+            'statusCode': response.status_code,
+            'headers': dict(response.headers),
+            'body': response.get_data(as_text=True)
+        }
